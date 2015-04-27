@@ -1,0 +1,6 @@
+TODO for crypt
+Urgent.
+Git rid of the shred.c|h, just shred in place and write back to source.
+Later.
+1. Provide -d option, do not shred and unlink when decrypting.
+2. Ability to do temporary decryption using an encrypted master list.
