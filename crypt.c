@@ -24,16 +24,16 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
-# include <stdint.h>
+#include <stdint.h>
 #include "readfile.h"
 #include "writefile.h"
 #include "sha256.h"
-#include "shred.h"
 
 char *helpmsg = "\n\tUsage: crypt [option] infile passphrase outfile.\n"
   "\n\tOptions:\n"
   "\t-h outputs this help message.\n"
-  "\t-D debug mode, don't unlink the infile on completion.\n"
+  "\t-D decryption mode, don't shred and unlink the infile on"
+  " completion.\n"
   "\tNB the passphrase if it contains spaces must be quoted.\n"
   "\tA 7 word passprase is recommended.\n"
   ;
@@ -46,15 +46,15 @@ static char *calcsha256sum(const char *bytes, size_t len, char *sum);
 int main(int argc, char **argv)
 {
 	int opt;
-	int debug = 1;	// during debugging 1, but default to be 0.
+	int decrypt = 0;
 
-	while((opt = getopt(argc, argv, ":hD ")) != -1) {
+	while((opt = getopt(argc, argv, ":hd ")) != -1) {
 		switch(opt){
 		case 'h':
 			dohelp(0);
 		break;
-		case 'D': // debug
-		debug = 1;
+		case 'd': // decryption mode
+		decrypt = 1;
 		break;
 		case ':':
 			fprintf(stderr, "Option %c requires an argument\n",optopt);
@@ -101,7 +101,10 @@ int main(int argc, char **argv)
 	// encrypted, write the result.
 	writefile(outfile, fdat.from, fdat.to);
 
-	if (!(debug)) {
+	if (!(decrypt)) {
+		// poor man's shred routine.
+		memset(fdat.from, 0, fdat.to - fdat.from);
+		writefile(infilename, fdat.from, fdat.to);
 		unlink(infilename);
 	}
 
