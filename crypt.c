@@ -101,12 +101,6 @@ int main(int argc, char **argv)
 	// encrypted, write the result.
 	writefile(outfile, fdat.from, fdat.to);
 
-	if (!(decrypt)) {
-		// poor man's shred routine.
-		memset(fdat.from, 0, fdat.to - fdat.from);
-		writefile(infilename, fdat.from, fdat.to);
-		unlink(infilename);
-	}
 
 	free(outfile);
 	free(pw);
