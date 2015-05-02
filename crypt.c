@@ -48,13 +48,36 @@ int main(int argc, char **argv)
 	int opt;
 	int decrypt = 0;
 
-	while((opt = getopt(argc, argv, ":hd ")) != -1) {
+	while((opt = getopt(argc, argv, ":hds:")) != -1) {
 		switch(opt){
+		fdata fdat;
 		case 'h':
 			dohelp(0);
 		break;
 		case 'd': // decryption mode
 		decrypt = 1;
+		break;
+		case 's': // shred and unlike named file
+		/* I doubt that track to adjacent track leakage is an issue for
+		 * drives >= 500 gigs but I will try to be safe anyway.
+		*/
+		fdat = readfile(optarg, 0, 1);
+		char c = 85;	// 01010101
+		memset(fdat.from, c, fdat.to - fdat.from);
+		writefile(optarg, fdat.from, fdat.to);
+		sync();
+		sleep(4);	// ensure that this gets written to rotating media?
+		c = 170;	// 10101010
+		memset(fdat.from, c, fdat.to - fdat.from);
+		writefile(optarg, fdat.from, fdat.to);
+		sync();
+		sleep(4);	// ensure that this gets written to rotating media?
+		c = 0;
+		memset(fdat.from, c, fdat.to - fdat.from);
+		writefile(optarg, fdat.from, fdat.to);
+		sync();
+		unlink(optarg);
+		exit(EXIT_SUCCESS);
 		break;
 		case ':':
 			fprintf(stderr, "Option %c requires an argument\n",optopt);
