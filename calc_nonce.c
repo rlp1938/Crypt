@@ -1,4 +1,4 @@
-/*      writefile.c
+/*      calc_nonce.c
  *
  *	Copyright 2011 Bob Parker <rlp1938@gmail.com>
  *
@@ -18,34 +18,24 @@
  *	MA 02110-1301, USA.
 */
 
-#include "writefile.h"
+#include "calc_nonce.h"
 
-void writefile(const char *fname, const char *fro, const char *to,
-				const char *mode)
+char *calc_nonce(void)
 {
-	// invokes fwrite()
-    FILE *fpo;
-    size_t siz, result;
+	/* return a 16 byte ascii string calculated from now().*/
+	union {
+		time_t now;
+		unsigned char ch[8];
+	} hash;
 
-    siz = to - fro;
-    if (strcmp(fname, "-") == 0) {
-		fpo = stdout;
-    } else {
-        fpo = fopen(fname, mode);
-        if (!fpo) {
-			fprintf(stderr, "File to write: %s\n", fname);
-			perror("In fwrite()");
-			exit(EXIT_FAILURE);
-		}
-    }
-    result = fwrite(fro, 1, siz, fpo);
-    if (result != siz) {
-        fprintf(stderr, "Size discrepancy in fwrite: %s %zu, %zu",
-                fname, siz, result);
-        perror(fname);  // might produce something useful.
-        exit(EXIT_FAILURE);
-    }
-    if (strcmp(fname, "-") != 0) {
-		fclose(fpo);
+	static char thenonce[17];
+	int i;
+	char *cp = &thenonce[0];
+	hash.now = time(NULL);
+	for(i=0; i<8; i++) {
+		sprintf(cp, "%.2x", hash.ch[i]);
+		cp += 2;
 	}
-} // writefile()
+	thenonce[16] = '\0';
+	return thenonce;
+} // calc_nonce()

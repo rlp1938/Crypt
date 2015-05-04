@@ -1,5 +1,5 @@
 /*
- * writefile.h
+ * calc_nonce.h
  * 	Copyright 2011 Bob Parker <rlp1938@gmail.com>
  *
  *	This program is free software; you can redistribute it and/or modify
@@ -18,20 +18,13 @@
  *	MA 02110-1301, USA.
 */
 
-#ifndef _WRITEFILE_H
-# define _WRITEFILE_H
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <stdlib.h>
+#ifndef _CALC_NONCE_H
+# define _CALC_NONCE_H
+
+#include <time.h>
 #include <string.h>
+#include <stdio.h>
 
-#define _GNU_SOURCE 1
-
-
-
-void writefile(const char *to_write, const char *from, const char *to,
-				const char *mode);
+char *calc_nonce(void);
 
 #endif

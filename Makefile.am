@@ -3,7 +3,7 @@
 AM_CFLAGS=-Wall -Wextra
 
 bin_PROGRAMS=crypt
-crypt_SOURCES=crypt.c readfile.c sha256.c writefile.c readfile.h sha256.h unlocked-io.h writefile.h
+crypt_SOURCES=crypt.c readfile.c sha256.c writefile.c readfile.h sha256.h unlocked-io.h writefile.h calc_nonce.h calc_nonce.c
 
 
 man_MANS=crypt.1

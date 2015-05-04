@@ -28,20 +28,24 @@
 #include "readfile.h"
 #include "writefile.h"
 #include "sha256.h"
+#include "calc_nonce.h"
 
 char *helpmsg = "\n\tUsage: crypt [option] infile passphrase outfile.\n"
+  "\t       crypt -s file_to_shred/delete\n"
   "\n\tOptions:\n"
   "\t-h outputs this help message.\n"
-  "\t-D decryption mode, don't shred and unlink the infile on"
-  " completion.\n"
+  "\t-d decryption mode. Encryption is asymmetric due to the use of\n"
+  "\t   an initialisation vector when encrypting.\n"
+  "\t-s file_to_shred_and_delete. This function is not done "
+  "automatically.\n"
   "\tNB the passphrase if it contains spaces must be quoted.\n"
-  "\tA 7 word passprase is recommended.\n"
+  "\tA 7 word or longer passphrase is recommended.\n"
   ;
 
 static void dohelp(int forced);
-static void encrypt(const char *pw, char *from, char *to);
+static void encrypt(const char *outfile, const char *pw, char *from,
+					char *to, int decrypting);
 static char *calcsha256sum(const char *bytes, size_t len, char *sum);
-
 
 int main(int argc, char **argv)
 {
@@ -64,17 +68,17 @@ int main(int argc, char **argv)
 		fdat = readfile(optarg, 0, 1);
 		char c = 85;	// 01010101
 		memset(fdat.from, c, fdat.to - fdat.from);
-		writefile(optarg, fdat.from, fdat.to);
+		writefile(optarg, fdat.from, fdat.to, "w");
 		sync();
 		sleep(4);	// ensure that this gets written to rotating media?
 		c = 170;	// 10101010
 		memset(fdat.from, c, fdat.to - fdat.from);
-		writefile(optarg, fdat.from, fdat.to);
+		writefile(optarg, fdat.from, fdat.to, "w");
 		sync();
 		sleep(4);	// ensure that this gets written to rotating media?
 		c = 0;
 		memset(fdat.from, c, fdat.to - fdat.from);
-		writefile(optarg, fdat.from, fdat.to);
+		writefile(optarg, fdat.from, fdat.to, "w");
 		sync();
 		unlink(optarg);
 		exit(EXIT_SUCCESS);
@@ -118,12 +122,25 @@ int main(int argc, char **argv)
 	}
 	char *outfile = strdup(argv[optind]);
 
+	// Encryption / decryption is no longer symmetric because I have
+	// added an IV, a nonce based on time. When encrypting the nonce
+	// will be created, when decrypting it will be read from the
+	// encrypted file.
+
+	char *compoundpw = malloc(strlen(pw)+ 17);	// strlen(nonce) == 16
+	if(decrypt) {
+		strncpy(compoundpw, fdat.from, 16);
+		compoundpw[16] = '\0';
+	} else {
+		char *np = calc_nonce();
+		writefile(outfile, np, np+16, "w");
+		strcpy(compoundpw, np);
+	}
+	strcat(compoundpw, pw);
+
 	// The actual encryption
-	encrypt(pw, fdat.from, fdat.to);
-
-	// encrypted, write the result.
-	writefile(outfile, fdat.from, fdat.to);
-
+	encrypt(outfile, compoundpw, fdat.from, fdat.to, decrypt);
+	free(compoundpw);
 
 	free(outfile);
 	free(pw);
@@ -138,7 +155,8 @@ void dohelp(int forced)
   exit(forced);
 }
 
-void encrypt(const char *pw, char *from, char *to)
+void encrypt(const char *outfile, const char *pw, char *from, char *to,
+			int decrypting)
 {
 	/*
 	 * 1. Starts by taking the sha256sum of the passphrase, pw.
@@ -147,15 +165,29 @@ void encrypt(const char *pw, char *from, char *to)
 	 * another 64 bytes.
 	 * 4. Repeats until done.
 	*/
+
+	/* Now using a nonce which occupies the first 16 bytes of an
+	 * encrypted file and is itself not encrypted. */
+
+	char *writefrom, *writemode;
+
 	char sum1[65], sum2[65];
 	char *old, *current;
 
 	old = &sum1[0];
 	current = &sum2[0];
 
-	strcpy(old, pw);
-	(void)calcsha256sum(old, strlen(old), current);
-	char *cp = from;
+	if(decrypting) {
+		writefrom = from + 16;	// don't write the nonce.
+		writemode = "w";
+	} else {
+		writefrom = from;	// the nonce has already been written,
+		writemode = "a";	// so append the encrypted data.
+	}
+
+	// pw may be any length subject only to available memory.
+	(void)calcsha256sum(pw, strlen(pw), current);
+	char *cp = writefrom;
 	char *kp = &current[0];
 
 	while(1) {
@@ -164,7 +196,7 @@ void encrypt(const char *pw, char *from, char *to)
 			*cp ^= *kp;
 			kp++;
 			cp++;
-			if (cp > to) return;	// the only exit point
+			if (cp > to) goto writeresult;	// the only exit point
 		}
 		// now swap old and current
 		{
@@ -175,6 +207,11 @@ void encrypt(const char *pw, char *from, char *to)
 		(void)calcsha256sum(old, 64, current);
 		kp = &current[0];
 	}
+
+writeresult:
+	// encrypted or decrypted, write it all out.
+	writefile(outfile, writefrom, to, writemode);
+
 } // encrypt()
 
 char *calcsha256sum(const char *bytes, size_t len, char *sum)
