@@ -1,6 +1,8 @@
 TODO for crypt
-Urgent.
-Git rid of the shred.c|h, just shred in place and write back to source.
-Later.
-1. Provide -d option, do not shred and unlink when decrypting.
-2. Ability to do temporary decryption using an encrypted master list.
+
+1. Provide -d option. Done
+2. Provide -t sub_dir_name. Write output file to /tmp/sub_dir_name.
+3. Provide -l option. Encrypt/decrypt from a list of file pairs and
+pass-phrases.
+4. Move dicewords, the pass-phrase generator from diceware word list
+into this bundle.
