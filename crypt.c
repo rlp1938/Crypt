@@ -25,10 +25,14 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <stdint.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include "readfile.h"
 #include "writefile.h"
 #include "sha256.h"
 #include "calc_nonce.h"
+
+#define NAME_MAX 256
 
 char *helpmsg = "\n\tUsage: crypt [option] infile passphrase outfile.\n"
   "\t       crypt -s file_to_shred/delete\n"
@@ -51,17 +55,27 @@ int main(int argc, char **argv)
 {
 	int opt;
 	int decrypt = 0;
+	int totmp = 0;
+	char *tmpdir = NULL;
 
-	while((opt = getopt(argc, argv, ":hds:")) != -1) {
+	while((opt = getopt(argc, argv, ":hds:t:")) != -1) {
 		switch(opt){
 		fdata fdat;
+		char wrk[NAME_MAX];
 		case 'h':
 			dohelp(0);
 		break;
 		case 'd': // decryption mode
 		decrypt = 1;
 		break;
-		case 's': // shred and unlike named file
+		case 't': // write output file to a sub dir in /tmp/
+		totmp = 1;
+		strcpy(wrk, "/tmp/");
+		strcat(wrk, optarg);
+		strcat(wrk, "/");
+		tmpdir = strdup(wrk);
+		break;
+		case 's': // shred and unlink named file
 		/* I doubt that track to adjacent track leakage is an issue for
 		 * drives >= 500 gigs but I will try to be safe anyway.
 		*/
@@ -120,7 +134,19 @@ int main(int argc, char **argv)
 		fprintf(stderr, "No output file provided\n");
 		dohelp(1);
 	}
-	char *outfile = strdup(argv[optind]);
+
+	char *outfile;
+	if (totmp) {
+		char wrk[NAME_MAX];
+		strcpy(wrk, tmpdir);	// The trailing '/' is there.
+		// now create the non-existent dir
+		(void)mkdir(wrk, 0775);
+		strcat(wrk, argv[optind]);
+		outfile = strdup(wrk);
+		free(tmpdir);
+	} else {
+		outfile = strdup(argv[optind]);
+	}
 
 	// Encryption / decryption is no longer symmetric because I have
 	// added an IV, a nonce based on time. When encrypting the nonce
