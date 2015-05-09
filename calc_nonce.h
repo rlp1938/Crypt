@@ -20,10 +20,12 @@
 
 #ifndef _CALC_NONCE_H
 # define _CALC_NONCE_H
-
-#include <time.h>
-#include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <time.h>
+
 
 char *calc_nonce(void);
 

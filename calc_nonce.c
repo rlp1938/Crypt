@@ -22,20 +22,28 @@
 
 char *calc_nonce(void)
 {
-	/* return a 16 byte ascii string calculated from now().*/
-	union {
-		time_t now;
-		unsigned char ch[8];
-	} hash;
+	/* return 8 bytes from /dev/random, followed by 8 bytes from
+	 * time(). The odds of /dev/random returning a duplicate value
+	 * in anyone's lifetime are vanishingly small but still non-zero.
+	 * The use of time() ensures that the nonce will always be unique.
+	 * */
 
-	static char thenonce[17];
-	int i;
-	char *cp = &thenonce[0];
-	hash.now = time(NULL);
-	for(i=0; i<8; i++) {
-		sprintf(cp, "%.2x", hash.ch[i]);
-		cp += 2;
+	static char thenonce[16];
+	FILE *fpi = fopen("/dev/random", "r");
+	size_t ret = fread(thenonce, 1, 8, fpi);
+	fclose(fpi);
+	if (ret != 8) {
+		fprintf(stderr,
+		"Expected to gain 8 bytes from /dev/random, but got %lu\n"
+				,ret);
+		perror("calc_nonce()");
+		exit(EXIT_FAILURE);
 	}
-	thenonce[16] = '\0';
+	union {
+		char chtim[8];
+		time_t tim;
+	} hash;
+	hash.tim = time(NULL);
+	strncpy(thenonce+8, hash.chtim, 8);
 	return thenonce;
 } // calc_nonce()

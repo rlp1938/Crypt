@@ -149,9 +149,9 @@ int main(int argc, char **argv)
 	}
 
 	// Encryption / decryption is no longer symmetric because I have
-	// added an IV, a nonce based on time. When encrypting the nonce
-	// will be created, when decrypting it will be read from the
-	// encrypted file.
+	// added an IV, a nonce based on 16 bytes from calc_nonce(). When
+	// encrypting the nonce will be created, when decrypting it will be
+	// read from the encrypted file.
 
 	char *compoundpw = malloc(strlen(pw)+ 17);	// strlen(nonce) == 16
 	if(decrypt) {
