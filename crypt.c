@@ -31,6 +31,7 @@
 #include "writefile.h"
 #include "sha256.h"
 #include "calc_nonce.h"
+#include "calcsha256sum.h"
 
 #define NAME_MAX 256
 
@@ -42,6 +43,9 @@ char *helpmsg = "\n\tUsage: crypt [option] infile passphrase outfile.\n"
   "\t   an initialisation vector when encrypting.\n"
   "\t-s file_to_shred_and_delete. This function is not done "
   "automatically.\n"
+  "\t-D debug mode. Writes the hex representations of the sha256sums\n"
+  "\t   to stderr. If you direct stderr to a file note that the size\n"
+  "\t   of that file will be double that of the source file.\n"
   "\tNB the passphrase if it contains spaces must be quoted.\n"
   "\tA 7 word or longer passphrase is recommended.\n"
   ;
@@ -49,7 +53,8 @@ char *helpmsg = "\n\tUsage: crypt [option] infile passphrase outfile.\n"
 static void dohelp(int forced);
 static void encrypt(const char *outfile, const char *pw, char *from,
 					char *to, int decrypting);
-static char *calcsha256sum(const char *bytes, size_t len, char *sum);
+
+static int debug;
 
 int main(int argc, char **argv)
 {
@@ -57,8 +62,9 @@ int main(int argc, char **argv)
 	int decrypt = 0;
 	int totmp = 0;
 	char *tmpdir = NULL;
+	debug = 0;
 
-	while((opt = getopt(argc, argv, ":hds:t:")) != -1) {
+	while((opt = getopt(argc, argv, ":hds:t:D")) != -1) {
 		switch(opt){
 		fdata fdat;
 		char wrk[NAME_MAX];
@@ -67,6 +73,9 @@ int main(int argc, char **argv)
 		break;
 		case 'd': // decryption mode
 		decrypt = 1;
+		break;
+		case 'D': // debugging mode
+		debug = 1;
 		break;
 		case 't': // write output file to a sub dir in /tmp/
 		totmp = 1;
@@ -153,16 +162,15 @@ int main(int argc, char **argv)
 	// encrypting the nonce will be created, when decrypting it will be
 	// read from the encrypted file.
 
-	char *compoundpw = malloc(strlen(pw)+ 17);	// strlen(nonce) == 16
+	char *compoundpw = malloc(strlen(pw)+ 33);	// len(nonce) == 32
 	if(decrypt) {
-		strncpy(compoundpw, fdat.from, 16);
-		compoundpw[16] = '\0';
+		memcpy(compoundpw, fdat.from, 32);
 	} else {
-		char *np = calc_nonce();
-		writefile(outfile, np, np+16, "w");
-		strcpy(compoundpw, np);
+		void *np = calc_nonce();
+		writefile(outfile, np, np+32, "w");
+		memcpy(compoundpw, np, 32);
 	}
-	strcat(compoundpw, pw);
+	strcpy(compoundpw+32, pw);
 
 	// The actual encryption
 	encrypt(outfile, compoundpw, fdat.from, fdat.to, decrypt);
@@ -192,19 +200,19 @@ void encrypt(const char *outfile, const char *pw, char *from, char *to,
 	 * 4. Repeats until done.
 	*/
 
-	/* Now using a nonce which occupies the first 16 bytes of an
+	/* Now using a nonce which occupies the first 32 bytes of an
 	 * encrypted file and is itself not encrypted. */
 
 	char *writefrom, *writemode;
 
-	char sum1[65], sum2[65];
-	char *old, *current;
+	char sum1[65];
+	char *current;
+	unsigned char result[32];
 
-	old = &sum1[0];
-	current = &sum2[0];
+	current = &sum1[0];
 
 	if(decrypting) {
-		writefrom = from + 16;	// don't write the nonce.
+		writefrom = from + 32;	// don't write the nonce.
 		writemode = "w";
 	} else {
 		writefrom = from;	// the nonce has already been written,
@@ -212,26 +220,29 @@ void encrypt(const char *outfile, const char *pw, char *from, char *to,
 	}
 
 	// pw may be any length subject only to available memory.
-	(void)calcsha256sum(pw, strlen(pw), current);
+	(void)calcsha256sum(pw, strlen(pw), current, result);
+
 	char *cp = writefrom;
-	char *kp = &current[0];
+	unsigned char *kp = &result[0];
 
 	while(1) {
+		if (debug) {
+			// write the hex version of the sum to stderr
+			fprintf(stderr, "%s\n", current);
+		} // debug
+
+		// the actual encryption.
 		size_t i;
-		for(i=0; i<64; i++){
+		for (i=0; i<32; i++) {
 			*cp ^= *kp;
 			kp++;
 			cp++;
 			if (cp > to) goto writeresult;	// the only exit point
 		}
-		// now swap old and current
-		{
-			char *tmp = old;
-			old = current;
-			current = tmp;
-		}
-		(void)calcsha256sum(old, 64, current);
-		kp = &current[0];
+
+		// get the next sum
+		(void)calcsha256sum(current, 64, current, result);
+		kp = &result[0];
 	}
 
 writeresult:
@@ -240,25 +251,3 @@ writeresult:
 
 } // encrypt()
 
-char *calcsha256sum(const char *bytes, size_t len, char *sum)
-{
-	/* calculate sha256sum of bytes
-	 * sum must be 65 bytes or more. */
-
-	int i, hashsize;
-	unsigned char hash[32];
-	char *tmp;
-
-	sum[0] = '\0';
-	hashsize = 32;
-
-	sha256_buffer(bytes, len, &hash[0]);
-
-	tmp = &sum[0];
-	for (i = 0; i < hashsize; i++) {
-		sprintf(tmp, "%.2x", hash[i]);
-		tmp += 2;
-	}
-	sum[64] = '\0';
-	return sum;
-} // calcsha256sum()

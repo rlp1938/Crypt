@@ -19,16 +19,20 @@
 */
 
 #include "calc_nonce.h"
+#include "calcsha256sum.h"
 
-char *calc_nonce(void)
+void *calc_nonce(void)
 {
-	/* return 8 bytes from /dev/random, followed by 8 bytes from
-	 * time(). The odds of /dev/random returning a duplicate value
-	 * in anyone's lifetime are vanishingly small but still non-zero.
-	 * The use of time() ensures that the nonce will always be unique.
+	/* gets 8 bytes from /dev/random, followed by 8 bytes from time().
+	 * The odds of /dev/random returning a duplicate value in anyone's
+	 * lifetime are vanishingly small but still non-zero. The use of
+	 * time() ensures that the nonce will always be unique.
+	 * Once calaculated, I further calculate the sha256 message digest
+	 * and return the 32 byte binary form of it.
 	 * */
 
-	static char thenonce[16];
+	static char thenonce[32];
+	char unused[65];
 	FILE *fpi = fopen("/dev/random", "r");
 	size_t ret = fread(thenonce, 1, 8, fpi);
 	fclose(fpi);
@@ -40,10 +44,12 @@ char *calc_nonce(void)
 		exit(EXIT_FAILURE);
 	}
 	union {
-		char chtim[8];
+		unsigned char chtim[8];
 		time_t tim;
 	} hash;
 	hash.tim = time(NULL);
-	strncpy(thenonce+8, hash.chtim, 8);
+	(void)memcpy(thenonce+8, hash.chtim, 8);
+	(void)calcsha256sum(thenonce, 16, unused, thenonce);
+	unused[64] = '\0';
 	return thenonce;
 } // calc_nonce()

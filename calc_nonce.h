@@ -27,6 +27,6 @@
 #include <time.h>
 
 
-char *calc_nonce(void);
+void *calc_nonce(void);
 
 #endif
