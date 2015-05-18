@@ -1,4 +1,4 @@
-.TH "CRYPT" 1 "2015-05-11" "GNU Command"
+.TH "CRYPT" 1 "2015-05-18" "GNU Command"
 
 
 .SH NAME
@@ -9,10 +9,13 @@
 .SH SYNOPSIS
 
 .P
-\fBcrypt\fR [option] \fIinputfile\fR 'passphrase suggest 7 words' \fIoutputfile.\fR
+\fBcrypt\fR [option] \fIinputfile\fR 'pass\-phrase suggest 7 words' \fIoutputfile.\fR
 
 .P
 \fBcrypt\fR \-s \fIfile_to_shred_and_delete\fR.
+
+.P
+\fBcrypt\fR \-l[e|d] \fIlist.en\fR 'pass\-phrase'
 
 .SH DESCRIPTION
 
@@ -42,6 +45,9 @@ likely only useful when making temporary decrypted copies of files.
 Debug mode. Causes the hex representation of the sha256sums to be sent
 to \fIstderr\fR. If you redirect this to a file note that such file will
 be double the the size of the file being encrypted.
+.TP
+ \fB\-l[e|d]\fR \fIlist.en\fR 'pass\-phrase'. Decrypts \fIlist.en\fR and
+encrypts or decrypts lists of files conatined in the list file.
 
 .SH VERSION
 
