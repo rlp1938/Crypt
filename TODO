@@ -1,8 +1,11 @@
 TODO for crypt
 
 1. Provide -d option. Done
-2. Provide -t sub_dir_name. Write output file to /tmp/sub_dir_name.
+2. Provide -t sub_dir_name. Write output file to /tmp/sub_dir_name. Done
 3. Provide -l option. Encrypt/decrypt from a list of file pairs and
-pass-phrases.
+pass-phrases. Done.
 4. Move dicewords, the pass-phrase generator from diceware word list
 into this bundle.
+5. Alter file reading to be in 32 byte chunks so as to be able to handle
+files > 2 Gigs.
+

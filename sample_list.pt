@@ -1,0 +1,28 @@
+#sample_list.pt
+#List of files to be encrypted or decrypted
+#Optionally specify a dir containing plain text files
+PTPATH=path_to_plaintext_files	# DO NOT put this on the first line.
+#Also optional, dir to contain encrypted files.
+ETPATH=path_to_encryptedfiles
+
+#Next the list of files and passphrases, these must be in strict order.
+PT=some_plain_text_file.pt	# Always the first of the treble
+ET=the_encrypted_file.en	# The second.
+PP=your_very_large_pass-phrase_maybe_7_words_long	# The last.
+
+# Repeat the above group as required.
+# Once you have created your list file you should then encrypt it with
+# crypt list.pt 'your passphrase for this encryption' list.en
+# and then invoke it with:
+# crypt -l[e|d] list.en 'your passphrase for this encryption'
+# crypt will take care of the ordering of source and destination files
+# depending on whether you are encrypting or decrypting.
+# File names, pathnames and pass-phrases may contain spaces and will be
+# enclosed with "'" when executing.
+
+# Once you have encrypted your 'list.pt' to 'list.en' you should of
+# course delete 'list.pt'. If you need to re-edit it you can always
+# recover it with:
+# crypt -d list.en 'your passphrase for this encryption' list.pt
+# If you lose that master passphrase you are cacked.
+# PasswordSafe anyone?

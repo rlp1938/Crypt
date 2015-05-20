@@ -5,6 +5,8 @@ AM_CFLAGS=-Wall -Wextra
 bin_PROGRAMS=crypt
 crypt_SOURCES=crypt.c readfile.c sha256.c writefile.c readfile.h sha256.h unlocked-io.h writefile.h calc_nonce.h calc_nonce.c calcsha256sum.h calcsha256sum.c
 
+crypdir=$(datadir)/crypt
+cryp_DATA=sample_list.pt
 
 man_MANS=crypt.1
 EXTRA_BUILD=crypt.1
