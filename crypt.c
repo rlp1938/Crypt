@@ -285,33 +285,12 @@ void doencrypt(const char *outfile, const char *pw, char *from, char *to,
 	}
 
 writeresult:
-
-/*	Very puzzling situation here. I can decrypt a list file perfectly
- * but I get segfaults processing the in memeory image without writing
- * an out putfile. So experiment with writing a file and do the list
- * processing on a read in image from that file.
 	// encrypted or decrypted, write it all out.
 	if (!list) {
 		writefile(outfile, writefrom, to, writemode);
 	} else {
 		processlist(writefrom, to); // Only needs the decrypted image.
 	}
-*/
-
-// experiment
-if (list) {
-	outfile = "/tmp/shit.dat";
-}
-
-writefile(outfile, writefrom, to, writemode);
-
-
-if (list) {
-	sync();
-	fdata mydat = readfile(outfile, 0, 1);
-	processlist(mydat.from, mydat.to);
-	free(mydat.from);
-}
 
 } // doencrypt()
 

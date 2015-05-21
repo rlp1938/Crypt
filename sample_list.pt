@@ -19,10 +19,14 @@ PP=your_very_large_pass-phrase_maybe_7_words_long	# The last.
 # depending on whether you are encrypting or decrypting.
 # File names, pathnames and pass-phrases may contain spaces and will be
 # enclosed with "'" when executing.
+# NB if you generate your pass-phrase using the program dicewords or
+# any other method of getting it from the Dice Ware word list, you may
+# get a word list including "'". Replace this with anything else or just
+# generate another phrase.
 
 # Once you have encrypted your 'list.pt' to 'list.en' you should of
-# course delete 'list.pt'. If you need to re-edit it you can always
-# recover it with:
+# course delete 'list.pt'. If you need to re-edit this file you can
+# always recover it with:
 # crypt -d list.en 'your passphrase for this encryption' list.pt
 # If you lose that master passphrase you are cacked.
 # PasswordSafe anyone?
