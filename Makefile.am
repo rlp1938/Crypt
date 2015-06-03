@@ -2,11 +2,18 @@
 
 AM_CFLAGS=-Wall -Wextra
 
-bin_PROGRAMS=crypt
-crypt_SOURCES=crypt.c readfile.c sha256.c writefile.c readfile.h sha256.h unlocked-io.h writefile.h calc_nonce.h calc_nonce.c calcsha256sum.h calcsha256sum.c
+bin_PROGRAMS=crypt dicewords
+crypt_SOURCES=crypt.c readfile.c sha256.c writefile.c readfile.h \
+sha256.h unlocked-io.h writefile.h calc_nonce.h calc_nonce.c \
+calcsha256sum.h calcsha256sum.c
+
+dicewords_SOURCES=dicewords.c readfile.c readfile.h
 
 crypdir=$(datadir)/crypt
 cryp_DATA=sample_list.pt
 
-man_MANS=crypt.1
-EXTRA_BUILD=crypt.1
+dicedir=$(datadir)/dicewords
+dice_DATA=diceware.wordlist.asc
+
+man_MANS=crypt.1 dicewords.1
+EXTRA_BUILD=crypt.1 dicewords.1 diceware.wordlist.asc

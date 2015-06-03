@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([crypt], [1.0.4], [rlp1938@gmail.com])
+AC_INIT([crypt], [1.0.5], [rlp1938@gmail.com])
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([writefile.c])
 AC_CONFIG_HEADERS([config.h])
@@ -22,7 +22,7 @@ AC_TYPE_UINT32_T
 
 # Checks for library functions.
 AC_FUNC_MALLOC
-AC_CHECK_FUNCS([memset mkdir strdup memchr])
+AC_CHECK_FUNCS([memset mkdir strdup memchr strtol])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

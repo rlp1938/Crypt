@@ -1,0 +1,34 @@
+dicewords
+GNU Command
+%%mtime(%Y-%m-%d)
+
+= NAME =
+**dicewords** - dicewords.
+
+
+= SYNOPSIS =
+**dicewords** [option] Number_of_words (must be > 2)
+
+= DESCRIPTION =
+**dicewords**
+outputs a pass-phrase comprising the user specified number of words and
+sends it to //stdout.//
+
+The words are selected at random from
+ ///usr/local/share/diceware.wordlist.asc.//
+
+= OPTIONS =
+
+:  **-h**
+print help information and exit.
+
+
+=VERSION=
+1.0.5
+
+
+= AUTHOR =
+Robert L Parker rlp1938@gmail.com
+
+= SEE ALSO =
+**crypt** (1) and www.diceware.org

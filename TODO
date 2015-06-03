@@ -5,7 +5,8 @@ TODO for crypt
 3. Provide -l option. Encrypt/decrypt from a list of file pairs and
 pass-phrases. Done.
 4. Move dicewords, the pass-phrase generator from diceware word list
-into this bundle.
+into this bundle. Done.
 5. Alter file reading to be in 32 byte chunks so as to be able to handle
-files > 2 Gigs.
-
+files > 2 Gigs. Done.
+6. Replace homegrown encryption with AES type. Mode and keylength to be
+decided at the time.
