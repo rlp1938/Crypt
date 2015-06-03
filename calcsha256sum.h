@@ -26,6 +26,6 @@
 #include <string.h>
 #include "sha256.h"
 
-char *calcsha256sum(const char *bytes, size_t len, char *sum,
+void *calcsha256sum(const char *bytes, size_t len, char *sum,
 							void *binresult);
 #endif

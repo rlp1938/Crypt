@@ -1,4 +1,3 @@
-
 /*      crypt.c
  *
  *	Copyright 2011 Bob Parker <rlp1938@gmail.com>
@@ -67,30 +66,31 @@ typedef struct prmstr {
 } prmstr;
 
 static void dohelp(int forced);
-static void doencrypt(const char *outfile, const char *pw, char *from,
-					char *to, int decrypting);
+static void listdecrypt(const char *pw, char *from, char *to,
+						size_t ivmode);
 static void	processlist(char *writefrom, char *to);
 			// Only needs the decrypted image.
 static prmstr getparam(const char *srchfor, char *from, char *to,
 						int fatal, int wantsts);
 static void dosystem(const char *cmd);
-
+static void readwriteloop(const char *infile, const char *outfile,
+					const char *pw, size_t chunksize, size_t ivsize);
+//static void logthisbin(void *buf, size_t size, const char *fn);
+static void shredfile(const char *fn);
 static int debug, list;
 static char themode;
 static char *program;
-
+static int decrypt;
 
 int main(int argc, char **argv)
 {
 	int opt;
-	int decrypt = 0;
 	int totmp = 0;
 	char *tmpdir = NULL;
 	list = debug = 0;
-
+	decrypt = 0;
 	while((opt = getopt(argc, argv, ":hds:t:Dl:")) != -1) {
 		switch(opt){
-		fdata fdat;
 		char wrk[NAME_MAX];
 		case 'h':
 			dohelp(0);
@@ -122,22 +122,7 @@ int main(int argc, char **argv)
 		/* I doubt that track to adjacent track leakage is an issue for
 		 * drives >= 500 gigs but I will try to be safe anyway.
 		*/
-		fdat = readfile(optarg, 0, 1);
-		char c = 85;	// 01010101
-		memset(fdat.from, c, fdat.to - fdat.from);
-		writefile(optarg, fdat.from, fdat.to, "w");
-		sync();
-		sleep(4);	// ensure that this gets written to rotating media?
-		c = 170;	// 10101010
-		memset(fdat.from, c, fdat.to - fdat.from);
-		writefile(optarg, fdat.from, fdat.to, "w");
-		sync();
-		sleep(4);	// ensure that this gets written to rotating media?
-		c = 0;
-		memset(fdat.from, c, fdat.to - fdat.from);
-		writefile(optarg, fdat.from, fdat.to, "w");
-		sync();
-		unlink(optarg);
+		shredfile(optarg);
 		exit(EXIT_SUCCESS);
 		break;
 		case ':':
@@ -161,8 +146,7 @@ int main(int argc, char **argv)
 	}
 
 	// 2. read the inputfile if such exists.
-	char *infilename = strdup(argv[optind]);
-	fdata fdat = readfile(infilename, 0, 1);	//
+	char *infile = strdup(argv[optind]);
 
 	// The passphrase
 	optind++;
@@ -200,24 +184,18 @@ int main(int argc, char **argv)
 	// encrypting the nonce will be created, when decrypting it will be
 	// read from the encrypted file.
 
-	char *compoundpw = malloc(strlen(pw)+ 33);	// len(nonce) == 32
-	if(decrypt) {
-		memcpy(compoundpw, fdat.from, 32);
-	} else {
-		void *np = calc_nonce();
-		writefile(outfile, np, np+32, "w");
-		memcpy(compoundpw, np, 32);
-	}
-	strcpy(compoundpw+32, pw);
-
 	// The actual encryption
-	doencrypt(outfile, compoundpw, fdat.from, fdat.to, decrypt);
-	free(compoundpw);
+	if (list) {	// in memory processing
+		fdata fdat = readfile(infile, 0, 1);
+		listdecrypt(pw, fdat.from, fdat.to, 32);
+		free(fdat.from);
+	} else {	// process in chunks so will handle huge files
+		readwriteloop(infile, outfile, pw, 32, 32);
+	}
 
 	if (!list) free(outfile);
 	free(pw);
-	free(fdat.from);
-	free(infilename);
+	free(infile);
 	return 0;
 }//main()
 
@@ -227,72 +205,43 @@ void dohelp(int forced)
   exit(forced);
 }
 
-void doencrypt(const char *outfile, const char *pw, char *from, char *to,
-			int decrypting)
+void listdecrypt(const char *pw, char *from, char *to, size_t ivsize)
 {
-	/*
-	 * 1. Starts by taking the sha256sum of the passphrase, pw.
-	 * 2. encrypts the first 32 bytes of the data beginning at from.
-	 * 3. Then it generates a sha256sum of the used sum and encrypts
-	 * another 32 bytes. NB uses the binary form of the sum not the
-	 * 64 byte hex format produced for human use.
-	 * 4. Repeats until done.
-	*/
-
-	/* Now using a nonce which occupies the first 32 bytes of an
-	 * encrypted file and is itself not encrypted. */
-
-	char *writefrom, *writemode;
-
-	char sum1[65];
-	char *current;
 	unsigned char result[32];
-
-	current = &sum1[0];
-
-	if(decrypting) {
-		writefrom = from + 32;	// don't write the nonce.
-		writemode = "w";
-	} else {
-		writefrom = from;	// the nonce has already been written,
-		writemode = "a";	// so append the encrypted data.
-	}
-
-	// pw may be any length subject only to available memory.
-	(void)calcsha256sum(pw, strlen(pw), current, result);
-
-	char *cp = writefrom;
-	unsigned char *kp = &result[0];
+	char *cp;
+	char *pwbuf;
+	// pwbuf may be any length subject only to available memory.
+	size_t pwblen = strlen(pw) + ivsize;
+	size_t pwbuflen = (pwblen < 64) ? 64 : pwblen;
+	pwbuf = malloc(pwbuflen + 1);	// terminating '\0'
+	memcpy(pwbuf, from, ivsize); // no strcpy(), may have embedded '\0'.
+	strcpy(pwbuf + ivsize, pw);
+	from += ivsize;
+	cp = from;
+	// NB arg1 is the input, arg3 64 bit sha256sum, arg4 32 bit sum.
+	(void)calcsha256sum(pwbuf, pwblen, pwbuf, result);
 
 	while(1) {
 		if (debug) {
 			// write the hex version of the sum to stderr
-			fprintf(stderr, "%s\n", current);
+			fprintf(stderr, "%s\n", pwbuf);
 		} // debug
 
-		// the actual encryption.
+		// the actual decryption.
 		size_t i;
 		for (i=0; i<32; i++) {
-			*cp ^= *kp;
-			kp++;
+			*cp ^= result[i];
 			cp++;
 			if (cp > to) goto writeresult;	// the only exit point
 		}
-
 		// get the next sum
-		(void)calcsha256sum(current, 64, current, result);
-		kp = &result[0];
+		/*         input64bit, size, output64bit, output32bit */
+		(void)calcsha256sum(pwbuf, 64, pwbuf, result);
 	}
 
 writeresult:
-	// encrypted or decrypted, write it all out.
-	if (!list) {
-		writefile(outfile, writefrom, to, writemode);
-	} else {
-		processlist(writefrom, to); // Only needs the decrypted image.
-	}
-
-} // doencrypt()
+	processlist(from, to); // Only needs the decrypted image.
+} // listdecrypt()
 
 void processlist(char *writefrom, char *to)
 {
@@ -470,3 +419,132 @@ void dosystem(const char *cmd)
     }
     return;
 } // dosystem()
+
+void readwriteloop(const char *infile, const char *outfile,
+					const char *pw, size_t chunksize, size_t ivsize)
+{
+	size_t ifsize;
+	struct stat sb;
+	if (stat(infile, &sb) == -1) {
+		perror(infile);
+		exit(EXIT_FAILURE);
+	}
+	ifsize = (size_t) sb.st_size - 1;
+	ifsize = (decrypt) ? ifsize - ivsize : ifsize;
+	// Open the input file
+
+	FILE *fpi = fopen(infile, "r");
+	if(!fpi) {
+		perror(infile);
+		exit(EXIT_FAILURE);
+	}
+	FILE *fpo = fopen(outfile, "w");
+	if(!fpo) {
+		perror(outfile);
+		exit(EXIT_FAILURE);
+	}
+
+	size_t buflen = chunksize;
+	buflen = (ivsize > chunksize) ? ivsize : chunksize;
+	char *buf = malloc(buflen);
+	size_t pwlen = ivsize + strlen(pw);
+	size_t pwbuflen;
+	char *pwbuf;	// holds hex format sha256sum also.
+	pwbuflen = (pwlen < 64) ? 64 : pwlen;
+	pwbuf = malloc(pwbuflen + 1);
+
+	if (decrypt) {
+		size_t x = fread(pwbuf, 1, ivsize, fpi);
+		x++;	// stop gcc bitching
+		//logthisbin(pwbuf, ivsize, "deciv.dat");
+	} else {
+		char *np = calc_nonce();
+		fwrite(np, 1, ivsize, fpo);	// write the iv out unencrypted.
+		memcpy(pwbuf, np, ivsize);	// memcpy, np may have embedded '\0'
+		//logthisbin(pwbuf, ivsize, "enciv.dat");
+	}
+
+	strcpy(pwbuf+ivsize, pw);	// initial key.
+	/*
+	if (decrypt){
+		logthisbin(pwbuf, pwlen, "decivpw.dat");
+	} else {
+		logthisbin(pwbuf, pwlen, "encivpw.dat");
+	}
+	*/
+
+	unsigned char brp[32];
+	void *binresult = brp;
+	size_t totalout = 0;
+	(void)calcsha256sum(pwbuf, pwlen, pwbuf, binresult);
+	while(1) {
+		if(debug) fprintf(stderr, "%s\n", pwbuf);
+		size_t bytesread = fread(buf, 1, chunksize, fpi);
+		size_t i = 0;
+		for(; i < chunksize; i++){
+			buf[i] ^= brp[i];
+		}
+		fwrite(buf, 1, bytesread, fpo);
+		totalout += bytesread;
+		/* It does not matter when bytesread < chunksize, we just
+		 * encrypt a few bytes of garbage in buf beyond the file end,
+		 * but only the number of bytes read in get written. */
+		if (totalout > ifsize) break;
+		(void)calcsha256sum(pwbuf, 64, pwbuf, binresult);
+	}
+
+} // readwriteloop()
+
+/* Un-comment to use this.
+void logthisbin(void *buf, size_t size, const char *fn)
+{
+	FILE *fpo = fopen(fn, "w");
+	fwrite(buf, 1, size, fpo);
+	fclose(fpo);
+} // logthisbin()
+*/
+
+void shredfile(const char *fn)
+{
+	/* overwrite the named patterns and then unlink it. */
+	FILE * fps = fopen(fn, "r+"); // keep the same inode???
+	if (!fps) {
+		perror(fn);
+		exit(EXIT_FAILURE);
+	}
+	struct stat sb;
+	(void)stat(fn, &sb);
+	size_t numbytes = (size_t)sb.st_size;
+	unsigned char patterns[3] = {85,/*01010101*/ 170,/*10101010*/ 0 };
+	size_t i, j;
+	for (i = 0; i < 3; i++) {
+		for(j = 0; j < numbytes; j++){
+			fwrite(&patterns[i], 1, 1, fps);
+		}
+		fclose(fps);
+		sleep(4);	// enough time for the result to be written out???
+		fps = fopen(fn, "r+");
+	}
+	// now disguise the fact that we have shredded anything.
+	FILE *fp = fopen("/dev/random", "r");
+	unsigned seed;
+	size_t nothing;
+	nothing = fread(&seed, 1, sizeof(unsigned), fp);
+	nothing++;	// stop gcc bitching.
+	srandom(seed);
+	fclose(fp);
+	numbytes /= sizeof(long int);
+	/* Due to truncation on division, this will have the effect of
+	 * leaving 0..7 bytes with 0 at the end of the file space. I
+	 * don't see that as a problem. I DO NOT want to increase the size
+	 * of the file because of the risk of it being written to another
+	 * inode if I do.
+	 * */
+	for(j = 0; j < numbytes; j++){
+		long int rdata = random();
+		fwrite(&rdata, 1, sizeof(long int), fps);
+	}
+	fclose(fps);
+	sleep(4);
+	unlink(fn);
+} // shredfile()

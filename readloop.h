@@ -1,6 +1,6 @@
-/*      calcsha256sum.c
- *
- *	Copyright 2011 Bob Parker <rlp1938@gmail.com>
+/*
+ * readloop.h
+ * 	Copyright 2011 Bob Parker <rlp1938@gmail.com>
  *
  *	This program is free software; you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -18,30 +18,19 @@
  *	MA 02110-1301, USA.
 */
 
-#include "calcsha256sum.h"
-
-void *calcsha256sum(const char *bytes, size_t len, char *sum,
-					void *binresult)
-{
-	/* calculate sha256sum of bytes
-	 * sum must be 65 bytes or more. */
-
-	int i, hashsize;
-	unsigned char hash[32];
-	char *tmp;
-
-	sum[0] = '\0';
-	hashsize = 32;
-
-	sha256_buffer(bytes, len, &hash[0]);
-
-	tmp = &sum[0];
-	for (i = 0; i < hashsize; i++) {
-		sprintf(tmp, "%.2x", hash[i]);
-		tmp += 2;
-	}
-	sum[64] = '\0';
-	memcpy(binresult, (void *)hash, 32);
-	return sum;
-} // calcsha256sum()
-
+#ifndef _READLOOP_H
+# define _READLOOP_H
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <getopt.h>
+#include <sys/stat.h>
+#include <string.h>
+#include <dirent.h>
+#include <ctype.h>
+#include <limits.h>
+#include <stdint.h>
+#include <sys/types.h>
+void readloop(const char *ftoread, const char *ftowrite,
+				size_t chunksize, char * (*process)(char *data));
+#endif
