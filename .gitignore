@@ -8,7 +8,6 @@
 /.deps/
 /crypt
 /crypt.plist/
-/crypt.t2t
 /install-sh
 /Makefile
 /Makefile.in

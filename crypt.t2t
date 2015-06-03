@@ -1,0 +1,51 @@
+CRYPT
+GNU Command
+%%mtime(%Y-%m-%d)
+
+= NAME =
+**crypt** - crypt.
+
+
+= SYNOPSIS =
+**crypt** [option] //inputfile// 'pass-phrase suggest 7 words' //outputfile.//
+
+**crypt** -s //file_to_shred_and_delete//.
+
+**crypt** -l[e|d] //list.en// 'pass-phrase'
+
+
+= DESCRIPTION =
+**crypt** encrypts or decrypts the //inputfile// using a key generated
+by the passphrase and writes the result to //outputfile.//
+
+
+= OPTIONS =
+
+:  **-h**
+print help information and exit.
+:  **-d**
+Decrypting mode. Due to the use of an initialisation vector when
+encrypting, the process is asymmetric. So this option must be used when
+decrypting a previously encrypted file.
+:  **-s**
+File to shred and delete. Shredding is never done automatically.
+:  **-t** sub_dir_name.
+Write the //outputfile// to the named sub_dir in ///tmp//. This is
+likely only useful when making temporary decrypted copies of files.
+:  **-D**
+Debug mode. Causes the hex representation of the sha256sums to be sent
+to //stderr//. If you redirect this to a file note that such file will
+be double the the size of the file being encrypted.
+:  **-l[e|d]** //list.en// 'pass-phrase'. Decrypts //list.en// and
+encrypts or decrypts lists of files contained in the list file.
+
+
+=VERSION=
+1.0.3
+
+
+= AUTHOR =
+Robert L Parker rlp1938@gmail.com
+
+= SEE ALSO =
+**dicewords** (1)
