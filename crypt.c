@@ -36,10 +36,6 @@
 #include "calc_nonce.h"
 #include "calcsha256sum.h"
 
-void *memmem(const void *haystack, size_t haystacklen,
-                    const void *needle, size_t needlelen);
-
-
 char *helpmsg = "\n\tUsage: crypt [option] infile pass-phrase outfile.\n"
   "\t       crypt -s file_to_shred/delete\n"
   "\t       crypt -l infile pass-phrase\n"
@@ -235,7 +231,7 @@ void listdecrypt(const char *pw, char *from, char *to, size_t ivsize)
 			if (cp > to) goto writeresult;	// the only exit point
 		}
 		// get the next sum
-		/*         input64bit, size, output64bit, output32bit */
+		/*         input64bytes, size, output64bytes, output32bytes */
 		(void)calcsha256sum(pwbuf, 64, pwbuf, result);
 	}
 

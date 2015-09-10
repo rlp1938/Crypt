@@ -39,9 +39,6 @@
 #include <ctype.h>
 #include "readfile.h"
 
-void *memmem(const void *haystack, size_t haystacklen,
-                    const void *needle, size_t needlelen);
-
 char *helpmsg = "\n\tUsage: dicewords -h \n"
   "\n\tUsage: dicewords no_of_words (3 minimum) \n"
   "\n\tOptions:\n"
